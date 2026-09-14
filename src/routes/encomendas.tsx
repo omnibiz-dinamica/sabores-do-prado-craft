@@ -21,7 +21,7 @@ export const Route = createFileRoute("/encomendas")({
     ],
     links: [{ rel: "canonical", href: "/encomendas" }],
   }),
-  component: Encomendas;
+  component: Encomendas,
 });
 
 const tipos = [
