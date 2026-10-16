@@ -6,7 +6,7 @@ sem SSR, sem Cloudflare Workers no servidor**.
 
 ## Resultado do build
 
-Ao rodar `npm run build:static` **no seu computador ou no GitHub Actions**, o script
+Ao rodar `bun run build:static` **no seu computador ou no GitHub Actions**, o script
 gera a pasta `dist/` com:
 
 ```
@@ -22,21 +22,25 @@ dist/
 
 ## Como o build estático funciona
 
-O comando `npm run build:static` usa uma configuração Vite SPA dedicada
-(`vite.static.config.ts`). Esse build não usa TanStack Start, Nitro, SSR,
-Wrangler, Cloudflare Worker nem prerender. A saída final é uma aplicação SPA
-100% estática em `dist/`. O `.htaccess` faz qualquer URL interna voltar para
-`index.html` em hospedagem Apache/Hostnet.
+O comando `bun run build:static` usa uma configuração Vite SPA dedicada
+(`vite.static.config.ts`), com a própria entrada `index.html` + `src/entry-static.tsx`
+na raiz do projeto. Esse build não usa TanStack Start, Nitro, SSR, Wrangler,
+Cloudflare Worker nem prerender — e não altera em nada o `vite.config.ts` nem
+o build normal (`npm run dev` / `npm run build`) usado pelo Lovable. A saída
+final é uma aplicação SPA 100% estática em `dist/`. O `.htaccess` (gerado
+automaticamente pelo script de postbuild) faz qualquer URL interna voltar
+para `index.html` em hospedagem Apache/Hostnet.
 
 ## Opção A — Build no seu computador
 
-Requer Node.js 20+ (https://nodejs.org).
+Requer [Bun](https://bun.sh) (o projeto usa `bun.lock`). Node.js 20+ também
+funciona com `npm install && npm run build:static`, mas sem o lockfile.
 
 ```bash
 git clone <seu-repo>
-cd converta-ai
-npm install
-npm run build:static
+cd sabores-do-prado-craft
+bun install
+bun run build:static
 ```
 
 Ao final aparecerá:
@@ -59,11 +63,18 @@ Acesse seu domínio — o site está no ar.
 
 ## Opção B — Deploy automático (GitHub Actions)
 
-O workflow em `.github/workflows/deploy.yml` já está configurado para:
+O workflow **"Deploy (Hostnet FTP)"** em `.github/workflows/deploy.yml` já está
+configurado para:
 
-1. Instalar dependências (`npm install`)
-2. Rodar `npm run build:static` (gera `dist/`)
+1. Instalar dependências (`bun install --frozen-lockfile`)
+2. Rodar `bun run build:static` (gera `dist/`)
 3. Enviar `./dist/` → `/saboresdobairro/` via FTP
+
+Ele roda de duas formas:
+
+- **Automática**: a cada `git push` na branch `main`.
+- **Manual**: aba **Actions → Deploy (Hostnet FTP) → Run workflow** (botão
+  disponível graças ao gatilho `workflow_dispatch`).
 
 Configure os secrets no GitHub (**Settings → Secrets and variables → Actions**):
 
@@ -73,7 +84,8 @@ Configure os secrets no GitHub (**Settings → Secrets and variables → Actions
 | `FTP_USERNAME` | Usuário FTP fornecido pela Hostnet       |
 | `FTP_PASSWORD` | Senha FTP fornecida pela Hostnet         |
 
-Cada `git push` na branch `main` publica automaticamente na Hostnet.
+Sem esses 3 secrets configurados, o workflow falha no passo de deploy (tanto
+na execução manual quanto na automática).
 
 ## Diretório correto para o deploy
 
@@ -95,8 +107,11 @@ o build estático não depende de Nitro nem de servidor SSR.
 - Nenhum arquivo em `dist/` requer runtime.
 - Todo o roteamento após o carregamento inicial acontece no cliente (TanStack Router).
 - O build estático não gera `.output/server`, Wrangler, Cloudflare Worker nem bundle SSR.
-- `ChatWidget` e `ContactForm` funcionam 100% no navegador (o formulário
-  abre o WhatsApp com a mensagem preenchida).
+- O botão flutuante de WhatsApp e o formulário da página `/encomendas`
+  funcionam 100% no navegador. O formulário envia o pedido para o webhook
+  configurado em `WEBHOOK_URL` (`src/lib/site.ts`) — enquanto esse valor
+  estiver vazio, ele só confirma ao cliente sem enviar para nenhum serviço
+  externo (ver n8n/Make).
 
 ## Se aparecer 403 Forbidden
 
